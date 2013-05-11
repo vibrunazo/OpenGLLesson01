@@ -4,11 +4,16 @@ import com.example.opengllesson01.util.SystemUiHider;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.Context;
+import android.content.pm.ConfigurationInfo;
+import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -45,15 +50,58 @@ public class LessonOneActivity extends Activity {
 	 */
 	private SystemUiHider mSystemUiHider;
 
+	private GLSurfaceView mGLSurfaceView;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
 		setContentView(R.layout.activity_lesson_one);
+		
+		mGLSurfaceView = new GLSurfaceView(this);
 
+		setupOpenglES();
+		
 		final View controlsView = findViewById(R.id.fullscreen_content_controls);
-		final View contentView = findViewById(R.id.fullscreen_content);
+		View contentView = findViewById(R.id.fullscreen_content);
+		ViewGroup parent = (ViewGroup) contentView.getParent();
+		parent.removeView(contentView);
+		parent.addView(mGLSurfaceView);
+		
+		contentView = mGLSurfaceView;
+		
+		setupUIHiding(controlsView, contentView);
+		
+		
+	}
 
+	private void setupOpenglES() {
+		// Check if the system supports OpenGL ES 2.0.
+		final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+		final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
+		final boolean supportsEs2 = configurationInfo.reqGlEsVersion >= 0x20000;
+
+		if (supportsEs2) 
+		{
+			// Request an OpenGL ES 2.0 compatible context.
+			mGLSurfaceView.setEGLContextClientVersion(2);
+
+			// Set the renderer to our demo renderer, defined below.
+			mGLSurfaceView.setRenderer(new LessonOneRenderer());
+		} 
+		else 
+		{
+			// This is where you could create an OpenGL ES 1.x compatible
+			// renderer if you wanted to support both ES 1 and ES 2.
+			return;
+		}
+
+//		setContentView(mGLSurfaceView);
+//		contentView = null;
+//		contentView = mGLSurfaceView;
+	}
+
+	private void setupUIHiding(final View controlsView, final View contentView) {
 		// Set up an instance of SystemUiHider to control the system UI for
 		// this activity.
 		mSystemUiHider = SystemUiHider.getInstance(this, contentView,
@@ -147,7 +195,7 @@ public class LessonOneActivity extends Activity {
 	Runnable mHideRunnable = new Runnable() {
 		@Override
 		public void run() {
-			mSystemUiHider.hide();
+			if (mSystemUiHider != null)	mSystemUiHider.hide();
 		}
 	};
 
@@ -159,4 +207,22 @@ public class LessonOneActivity extends Activity {
 		mHideHandler.removeCallbacks(mHideRunnable);
 		mHideHandler.postDelayed(mHideRunnable, delayMillis);
 	}
+	
+	@Override
+	protected void onResume() 
+	{
+		// The activity must call the GL surface view's onResume() on activity onResume().
+		super.onResume();
+		mGLSurfaceView.onResume();
+	}
+
+	@Override
+	protected void onPause() 
+	{
+		// The activity must call the GL surface view's onPause() on activity onPause().
+		super.onPause();
+		mGLSurfaceView.onPause();
+	}	
+	
+	
 }
